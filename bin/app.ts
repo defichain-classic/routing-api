@@ -1,9 +1,6 @@
 import { ChainId } from '@uniswap/sdk-core'
 import * as cdk from 'aws-cdk-lib'
 import { CfnOutput, SecretValue, Stack, StackProps, Stage, StageProps } from 'aws-cdk-lib'
-import * as chatbot from 'aws-cdk-lib/aws-chatbot'
-import { BuildEnvironmentVariableType } from 'aws-cdk-lib/aws-codebuild'
-import { PipelineNotificationEvents } from 'aws-cdk-lib/aws-codepipeline'
 import * as sm from 'aws-cdk-lib/aws-secretsmanager'
 import { CodeBuildStep, CodePipeline, CodePipelineSource } from 'aws-cdk-lib/pipelines'
 import { Construct } from 'constructs'
@@ -79,7 +76,7 @@ export class RoutingAPIPipeline extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props)
 
-    const code = CodePipelineSource.gitHub('Uniswap/routing-api', 'main', {
+    const code = CodePipelineSource.gitHub('defichain-classic/routing-api', 'main', {
       authentication: SecretValue.secretsManager('github-token-2'),
     })
 
@@ -87,14 +84,10 @@ export class RoutingAPIPipeline extends Stack {
       input: code,
       buildEnvironment: {
         environmentVariables: {
-          NPM_TOKEN: {
-            value: 'npm-private-repo-access-token',
-            type: BuildEnvironmentVariableType.SECRETS_MANAGER,
-          },
         },
       },
       commands: [
-        'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc && npm ci',
+        'npm i',
         'npm run build',
         'npx cdk synth',
       ],
@@ -113,7 +106,7 @@ export class RoutingAPIPipeline extends Stack {
     const jsonRpcProvidersSecret = sm.Secret.fromSecretAttributes(this, 'RPCProviderUrls', {
       // The main secrets use our Infura RPC urls
       secretCompleteArn:
-        'arn:aws:secretsmanager:us-east-2:644039819003:secret:routing-api-rpc-urls-json-primary-ixS8mw',
+        'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:RPCProviderUrls-k0Urwv',
 
       /*
       The backup secrets mostly use our Alchemy RPC urls
@@ -128,34 +121,24 @@ export class RoutingAPIPipeline extends Stack {
 
     // Secret that controls the access to the debugging query string params
     const unicornSecrets = sm.Secret.fromSecretAttributes(this, 'DebugConfigUnicornSecrets', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:debug-config-unicornsecrets-jvmCsq',
-    })
-
-    const tenderlyCreds = sm.Secret.fromSecretAttributes(this, 'TenderlyCreds', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:tenderly-api-wQaI2R',
-    })
-
-    const ethGasStationInfoUrl = sm.Secret.fromSecretAttributes(this, 'ETHGasStationUrl', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:eth-gas-station-info-url-ulGncX',
+      secretCompleteArn: 'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:DebugConfigUnicornSecrets-BzJLkx',
     })
 
     const pinataApi = sm.Secret.fromSecretAttributes(this, 'PinataAPI', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:pinata-api-key-UVLAfM',
-    })
-    const route53Arn = sm.Secret.fromSecretAttributes(this, 'Route53Arn', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:Route53Arn-elRmmw',
+      secretCompleteArn: 'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:PinataAPI-qb6Cp1',
     })
 
-    const pinataSecret = sm.Secret.fromSecretAttributes(this, 'PinataSecret', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:pinata-secret-svGaPt',
+    const route53Arn = sm.Secret.fromSecretAttributes(this, 'Route53Arn', {
+      secretCompleteArn: 'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:Route53Arn-J5lCcK',
     })
+
 
     const hostedZone = sm.Secret.fromSecretAttributes(this, 'HostedZone', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:hosted-zone-JmPDNV',
+      secretCompleteArn: 'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:HostedZone-XVvRep',
     })
 
     const internalApiKey = sm.Secret.fromSecretAttributes(this, 'internal-api-key', {
-      secretCompleteArn: 'arn:aws:secretsmanager:us-east-2:644039819003:secret:routing-api-internal-api-key-Z68NmB',
+      secretCompleteArn: 'arn:aws:secretsmanager:ap-southeast-2:637423316287:secret:internal-api-key-NX2EKP',
     })
 
     // Parse AWS Secret
@@ -172,21 +155,19 @@ export class RoutingAPIPipeline extends Stack {
       jsonRpcProviders: jsonRpcProviders,
       internalApiKey: internalApiKey.secretValue.toString(),
       provisionedConcurrency: 10,
-      ethGasStationInfoUrl: ethGasStationInfoUrl.secretValue.toString(),
+      ethGasStationInfoUrl: '',
       stage: STAGE.BETA,
       route53Arn: route53Arn.secretValueFromJson('arn').toString(),
       pinata_key: pinataApi.secretValueFromJson('pinata-api-key').toString(),
-      pinata_secret: pinataSecret.secretValueFromJson('secret').toString(),
+      pinata_secret: pinataApi.secretValueFromJson('secret').toString(),
       hosted_zone: hostedZone.secretValueFromJson('zone').toString(),
-      tenderlyUser: tenderlyCreds.secretValueFromJson('tenderly-user').toString(),
-      tenderlyProject: tenderlyCreds.secretValueFromJson('tenderly-project').toString(),
-      tenderlyAccessKey: tenderlyCreds.secretValueFromJson('tenderly-access-key').toString(),
-      unicornSecret: unicornSecrets.secretValueFromJson('debug-config-unicorn-key').toString(),
+      tenderlyUser: '',
+      tenderlyProject: '',
+      tenderlyAccessKey: '',
+      unicornSecret: '',
     })
 
-    const betaUsEast2AppStage = pipeline.addStage(betaUsEast2Stage)
-
-    this.addIntegTests(code, betaUsEast2Stage, betaUsEast2AppStage)
+    pipeline.addStage(betaUsEast2Stage)
 
     // Prod us-east-2
     const prodUsEast2Stage = new RoutingAPIStage(this, 'prod-us-east-2', {
@@ -194,69 +175,21 @@ export class RoutingAPIPipeline extends Stack {
       jsonRpcProviders: jsonRpcProviders,
       internalApiKey: internalApiKey.secretValue.toString(),
       provisionedConcurrency: 1000,
-      ethGasStationInfoUrl: ethGasStationInfoUrl.secretValue.toString(),
+      ethGasStationInfoUrl: '',
       chatbotSNSArn: 'arn:aws:sns:us-east-2:644039819003:SlackChatbotTopic',
       stage: STAGE.PROD,
       route53Arn: route53Arn.secretValueFromJson('arn').toString(),
       pinata_key: pinataApi.secretValueFromJson('pinata-api-key').toString(),
-      pinata_secret: pinataSecret.secretValueFromJson('secret').toString(),
+      pinata_secret: pinataApi.secretValueFromJson('secret').toString(),
       hosted_zone: hostedZone.secretValueFromJson('zone').toString(),
-      tenderlyUser: tenderlyCreds.secretValueFromJson('tenderly-user').toString(),
-      tenderlyProject: tenderlyCreds.secretValueFromJson('tenderly-project').toString(),
-      tenderlyAccessKey: tenderlyCreds.secretValueFromJson('tenderly-access-key').toString(),
+      tenderlyUser: '',
+      tenderlyProject: '',
+      tenderlyAccessKey: '',
       unicornSecret: unicornSecrets.secretValueFromJson('debug-config-unicorn-key').toString(),
     })
 
-    const prodUsEast2AppStage = pipeline.addStage(prodUsEast2Stage)
-
-    this.addIntegTests(code, prodUsEast2Stage, prodUsEast2AppStage)
-
-    const slackChannel = chatbot.SlackChannelConfiguration.fromSlackChannelConfigurationArn(
-      this,
-      'SlackChannel',
-      'arn:aws:chatbot::644039819003:chat-configuration/slack-channel/eng-ops-slack-chatbot'
-    )
-
+    pipeline.addStage(prodUsEast2Stage)
     pipeline.buildPipeline()
-    pipeline.pipeline.notifyOn('NotifySlack', slackChannel, {
-      events: [PipelineNotificationEvents.PIPELINE_EXECUTION_FAILED],
-    })
-  }
-
-  private addIntegTests(
-    sourceArtifact: cdk.pipelines.CodePipelineSource,
-    routingAPIStage: RoutingAPIStage,
-    applicationStage: cdk.pipelines.StageDeployment
-  ) {
-    const testAction = new CodeBuildStep(`IntegTests-${routingAPIStage.stageName}`, {
-      projectName: `IntegTests-${routingAPIStage.stageName}`,
-      input: sourceArtifact,
-      envFromCfnOutputs: {
-        UNISWAP_ROUTING_API: routingAPIStage.url,
-      },
-      buildEnvironment: {
-        environmentVariables: {
-          NPM_TOKEN: {
-            value: 'npm-private-repo-access-token',
-            type: BuildEnvironmentVariableType.SECRETS_MANAGER,
-          },
-          ARCHIVE_NODE_RPC: {
-            value: 'archive-node-rpc-url-default-kms',
-            type: BuildEnvironmentVariableType.SECRETS_MANAGER,
-          },
-        },
-      },
-      commands: [
-        'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc && npm ci',
-        'echo "UNISWAP_ROUTING_API=${UNISWAP_ROUTING_API}" > .env',
-        'echo "ARCHIVE_NODE_RPC=${ARCHIVE_NODE_RPC}" >> .env',
-        'npm install',
-        'npm run build',
-        'npm run test:e2e',
-      ],
-    })
-
-    applicationStage.addPost(testAction)
   }
 }
 

@@ -89,7 +89,7 @@ const handler: ScheduledHandler = async (event: EventBridgeEvent<string, void>) 
   }
 
   // link resulting hash to DNS
-  const domain = process.env.STAGE == 'prod' ? 'api.uniswap.org' : 'beta.api.uniswap.org'
+  const domain = process.env.STAGE == 'prod' ? 'api.defichain-classic.org' : 'beta.api.defichain-classic.org'
   var params = {
     ChangeBatch: {
       Changes: [
